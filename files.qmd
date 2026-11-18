@@ -1,0 +1,176 @@
+# Files
+
+Reading and writing files is the heart of day 1: the practical asks you to walk
+a directory of alignment reports, parse each one, and write a summary table.
+Everything you need is in this chapter.
+
+## Opening and closing a file
+
+```python
+fd = open("file_name", "opening mode")
+```
+
+The first argument is the path, the second is the mode:
+
+| Mode | Meaning |
+|:---:|:---|
+| `"r"` | read |
+| `"w"` | write, **overwriting** the file if it exists |
+| `"a"` | write, appending to the end if it exists |
+| `"x"` | write, failing if the file already exists |
+
+Python treats files as text (UTF-8) by default.
+
+```{python}
+fd = open("data/fichier_tabulate.tsv", "r")
+fd
+```
+
+::: {.callout-note}
+The path is relative to the folder you run the program from, and `/` works on
+Linux, macOS and Windows alike. Write it as a plain string:
+`"data/fichier_tabulate.tsv"`.
+:::
+
+`fd` is an object representing the open file. Once you are done with it, you
+must close it:
+
+```{python}
+fd.close()
+fd
+```
+
+## The with statement
+
+Opening a file with [with]{.keywords} is strongly advised: it closes the file
+for you, even if an error occurs inside the block. Instead of
+
+```python
+fd = open("file.txt", "r")
+print(fd.read())
+fd.close()
+```
+
+write
+
+```python
+with open("file.txt", "r") as fd:
+    print(fd.read())
+```
+
+![The `with` statement opens the file, hands it to you as `fd`, and closes it
+on its own when the block ends.](../img/files.png)
+
+::: {.callout-important}
+The file is open **only inside** the [with]{.keywords} block.
+:::
+
+Two files can be opened at once — a pattern you will use to read a file and
+write its transformed version:
+
+```python
+with open("filename_in.txt", "r") as in_file, open("filename_out.txt", "w") as out_file:
+    in_file.read()
+    out_file.write("text")
+```
+
+## Reading
+
+A file has a **cursor** that advances as you read. `read()` consumes the whole
+file; reading again returns an empty string until you rewind with `seek(0)`.
+
+```{python}
+with open("data/fichier_tabulate.tsv", "r") as fd:
+    whole_file = fd.read()       # everything, as one string
+    second_attempt = fd.read()   # the cursor is at the end: empty
+    fd.seek(0)                   # rewind
+    after_rewind = fd.read()
+
+print("whole file     :", repr(whole_file))
+print("second attempt :", repr(second_attempt))
+print("after rewind   :", repr(after_rewind))
+```
+
+`read(n)` reads *n* characters, `readline()` one line, `readlines()` every line
+as a list:
+
+```{python}
+with open("data/fichier_tabulate.tsv", "r") as fd:
+    print("read(3)    :", repr(fd.read(3)))
+
+with open("data/fichier_tabulate.tsv", "r") as fd:
+    print("readline() :", repr(fd.readline()))
+
+with open("data/fichier_tabulate.tsv", "r") as fd:
+    print("readlines():", fd.readlines())
+```
+
+The idiomatic way is to loop directly over the file, which reads one line at a
+time and never loads the whole file into memory:
+
+```{python}
+with open("data/fichier_tabulate.tsv", "r") as fd:
+    for line in fd:
+        print(repr(line))
+```
+
+:::{.callout-warning}
+Lines read by [readline]{.keywords}, [readlines]{.keywords} and the `for` loop
+keep their line break (`\n`). Call `line.strip()` before using them — this is
+the single most common source of bugs when parsing files.
+:::
+
+## Writing
+
+`write` takes a string, `writelines` a list of strings. Neither adds line
+breaks for you.
+
+```{python}
+lines_to_write = ['first line', 'second line']
+
+with open("output_file_1.txt", "w") as fout:
+    fout.writelines(lines_to_write)
+
+with open("output_file_2.txt", "w") as fout:
+    for line in lines_to_write:
+        fout.write(line)
+```
+
+Open both files in a text editor. What do you see? Can you modify the code so
+that each entry really is on its own line?
+
+## Errors and exception handling
+
+When something goes wrong, Python raises an **exception**. Left unhandled, the
+program stops and prints the error with its full stack trace. `try` / `except`
+lets you catch it and decide what to do.
+
+```{python}
+fnamein = "i_dont_exist.svg"
+
+try:
+    with open(fnamein, "rb") as fin:
+        a = int(fin.read())
+except FileNotFoundError:
+    print(f"File {fnamein} does not exist")
+except ValueError:
+    print("Could not convert the content to an integer")
+except OSError as err:
+    print("OS error:", err)
+```
+
+Catch the **specific** exceptions you expect, from the most precise to the most
+general — see the
+[hierarchy of exceptions](https://docs.python.org/3/library/exceptions.html).
+
+::: {.callout-tip}
+In the day 1 practical, one sample has no reads at all and its percentages are
+written `N/A`. `float("N/A")` raises a `ValueError`. Deciding what to do with
+it is part of the exercise.
+:::
+
+## **Practice**: a tabulated file
+
+Write **exo_file_tsv.py** that reads `data/fichier_tabulate.tsv` and writes an
+output file with one extra `sum` column, holding the sum of the other columns
+for each row.
